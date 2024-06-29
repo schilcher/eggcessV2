@@ -7,7 +7,9 @@ import time
 import machine
 import network
 import gc
-from umqtt.robust import MQTTClient
+
+# umqtt used to connect to mqtt broker (Home Assistant)
+# from umqtt.robust import MQTTClient
 
 
 import timing
@@ -17,10 +19,10 @@ import my_secrets as secrets
 
 from door import Door
 
-__version__ = "1.3.0"
+__version__ = "2.0.0"
 
 
-DEVICE_NAME = "eggcess"
+DEVICE_NAME = "eggcessV2"
 STATUS_TOPIC = f"/status/{DEVICE_NAME}"
 COMMAND_TOPIC = f"/{DEVICE_NAME}/cmd"
 STATE_TOPIC = f"/{DEVICE_NAME}/state"
@@ -36,7 +38,9 @@ led = machine.Pin(
 )  # use LED to indicate status. This is also one of drive pins
 
 door = Door()
-wdt = machine.WDT(timeout=300_000)  # 5 minutes (in milliseconds)
+
+# Endable watchdog timer when deployed, not during debug
+# wdt = machine.WDT(timeout=300_000)  # 5 minutes (in milliseconds)
 
 
 class Params:
@@ -48,19 +52,20 @@ class Params:
     date: str | None = None
 
 
-def connect_mqtt(client_id: str):
-    """Connects to the MQTT broker"""
+# Add function below back in if added to Home Assistant
+# def connect_mqtt(client_id: str):
+#     """Connects to the MQTT broker"""
 
-    client = MQTTClient(
-        client_id,
-        secrets.MQTT_BROKER,
-        user=secrets.MQTT_USER,
-        password=secrets.MQTT_PASSWORD,
-    )
-    client.set_callback(command_callback)
-    client.connect()
-    client.subscribe(COMMAND_TOPIC)
-    return client
+#     client = MQTTClient(
+#         client_id,
+#         secrets.MQTT_BROKER,
+#         user=secrets.MQTT_USER,
+#         password=secrets.MQTT_PASSWORD,
+#     )
+#     client.set_callback(command_callback)
+#     client.connect()
+#     client.subscribe(COMMAND_TOPIC)
+#     return client
 
 
 def command_callback(topic, msg):  # pylint: disable=unused-argument
@@ -76,13 +81,14 @@ def command_callback(topic, msg):  # pylint: disable=unused-argument
         print("invalid command")
 
 
-async def mqtt_listener(client):
-    while True:
-        try:
-            client.check_msg()  # Check for new MQTT messages
-            await asyncio.sleep(1)  # Pause briefly to avoid blocking
-        except Exception as e:
-            logger.error(f"Exception in mqtt_listener: {type(e).__name__}: {e}")
+# Add function below back in if added to Home Assistant
+# async def mqtt_listener(client):
+#     while True:
+#         try:
+#             client.check_msg()  # Check for new MQTT messages
+#             await asyncio.sleep(1)  # Pause briefly to avoid blocking
+#         except Exception as e:
+#             logger.error(f"Exception in mqtt_listener: {type(e).__name__}: {e}")
 
 
 async def report_status(client, period_sec=5):
@@ -128,15 +134,17 @@ async def report_status(client, period_sec=5):
                 }
             )
 
+            # Uncomment wdt.feed() when ready to deploy, not during debug
             # Reset watchdog timer
-            wdt.feed()
+            # wdt.feed()
 
-            # Optionally serialize and publish status
-            json_status = json.dumps(msg)
-            client.publish(STATUS_TOPIC, json_status)
+            # Commands below can be added in later to integrate with Home Assistant
+            # # Optionally serialize and publish status
+            # json_status = json.dumps(msg)
+            # client.publish(STATUS_TOPIC, json_status)
 
-            # Publish state
-            client.publish(STATE_TOPIC, door.state)
+            # # Publish state
+            # client.publish(STATE_TOPIC, door.state)
 
             # Print status to console, to avoid ampy timeout
             print(msg)
@@ -249,7 +257,8 @@ async def open_and_close():
 async def main():
     """main coroutine"""
 
-    mqtt_client = connect_mqtt(DEVICE_NAME)
+    # Uncomment for Home Assistant
+    # mqtt_client = connect_mqtt(DEVICE_NAME)
 
     # start webserver
     tasks = []
@@ -258,9 +267,9 @@ async def main():
     )
 
     coros = [
-        report_status(mqtt_client),
-        # report_status_min(),
-        mqtt_listener(mqtt_client),
+        # Uncomment for Home Assistant
+        #report_status(mqtt_client),
+        #mqtt_listener(mqtt_client),
         daily_coro(),
         open_and_close(),
     ]
